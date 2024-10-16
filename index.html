@@ -3,78 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phaser Bird Game</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <title>Simple Bird Game</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; margin-top: 50px; }
+        canvas { border: 1px solid #000; }
+    </style>
 </head>
 <body>
-    <h2>Phaser Bird Game</h2>
+    <h2>Simple Bird Game</h2>
+    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    <p>Click anywhere to flap and make the bird fly</p>
     <script>
-        // Phaser configuration object
-        const config = {
-            type: Phaser.AUTO,
-            width: 600,
-            height: 300,
-            physics: {
-                default: 'arcade',
-                arcade: {
-                    gravity: { y: 400 }
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Load bird images
+        const birdImages = [
+            new Image(),
+            new Image()
+        ];
+        birdImages[0].src = 'bird1.png'; // Replace with the actual path to bird1.png
+        birdImages[1].src = 'bird2.png'; // Replace with the actual path to bird2.png
+
+        // Bird properties
+        let bird = { x: 50, y: 150, width: 40, height: 40, dy: 0 };
+        let obstacles = [];
+        let score = 0;
+        let running = true;
+        const gravity = 0.4;  // Gravity strength
+        const flapStrength = -6;  // Strength of the bird flap
+        let currentFrame = 0; // Track which bird image to display
+
+        // Set interval for changing the bird image to animate
+        const animationSpeed = 10; // Change image every 10 game loops
+        let frameCounter = 0; // Counter to track frame switching
+
+        function gameLoop() {
+            if (!running) return;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw bird using current frame image
+            ctx.drawImage(birdImages[currentFrame], bird.x, bird.y, bird.width, bird.height);
+
+            // Apply gravity
+            bird.dy += gravity;
+            bird.y += bird.dy;
+
+            // Keep bird within canvas bounds
+            if (bird.y < 0) {
+                bird.y = 0;  // Prevent bird from going above the canvas
+                bird.dy = 0;  // Reset velocity if hitting the top
+            } else if (bird.y + bird.height > canvas.height) {
+                bird.y = canvas.height - bird.height;  // Prevent bird from falling below canvas
+                bird.dy = 0;  // Reset velocity if hitting the bottom
+            }
+
+            // Add and move obstacles
+            if (Math.random() < 0.02) {
+                obstacles.push({ x: canvas.width, y: Math.random() * canvas.height, width: 20, height: 40 });
+            }
+            for (let obs of obstacles) {
+                obs.x -= 3; // Speed of obstacles
+                ctx.fillStyle = "green";
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                
+                // Check for collision
+                if (bird.x < obs.x + obs.width &&
+                    bird.x + bird.width > obs.x &&
+                    bird.y < obs.y + obs.height &&
+                    bird.y + bird.height > obs.y) {
+                    running = false; // Game over condition
+                    alert("Game Over! Your Score: " + score);
+                    return;
                 }
-            },
-            scene: {
-                preload: preload,
-                create: create,
-                update: update
             }
-        };
 
-        // Game instance
-        const game = new Phaser.Game(config);
+            // Remove old obstacles
+            obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
 
-        function preload() {
-            // Load images (replace with the actual paths to your bird images)
-            this.load.image('bird1', 'bird1.png');
-            this.load.image('bird2', 'bird2.png');
-        }
+            // Score
+            score++;
+            ctx.fillStyle = "black";
+            ctx.fillText("Score: " + score, 10, 20);
 
-        let bird;
-        let isFlapping = false;
-
-        function create() {
-            // Add bird sprite (using bird1 as a placeholder initially)
-            bird = this.physics.add.sprite(100, 150, 'bird1');
-            bird.setCollideWorldBounds(true);
-
-            // Create an animation using the two bird images for flapping effect
-            this.anims.create({
-                key: 'flap',
-                frames: [
-                    { key: 'bird1' },
-                    { key: 'bird2' }
-                ],
-                frameRate: 10,
-                repeat: -1
-            });
-
-            // Start the flap animation
-            bird.play('flap');
-
-            // Input listener for clicking to make the bird flap
-            this.input.on('pointerdown', () => {
-                isFlapping = true;
-            });
-
-            // Reset flapping when the pointer is released
-            this.input.on('pointerup', () => {
-                isFlapping = false;
-            });
-        }
-
-        function update() {
-            // Make the bird flap upward when clicked
-            if (isFlapping) {
-                bird.setVelocityY(-200);
+            // Update animation frame (switch between bird images)
+            frameCounter++;
+            if (frameCounter >= animationSpeed) {
+                frameCounter = 0;
+                currentFrame = (currentFrame + 1) % birdImages.length; // Toggle between image 0 and 1
             }
+
+            requestAnimationFrame(gameLoop);
         }
+
+        // Flap on mouse click
+        document.addEventListener("click", function() {
+            if (bird.y > 0) {
+                bird.dy = flapStrength; // Set upward velocity for the flap
+            }
+        });
+
+        // Start the game once both bird images are loaded
+        let imagesLoaded = 0;
+        birdImages.forEach(img => {
+            img.onload = () => {
+                imagesLoaded++;
+                if (imagesLoaded === birdImages.length) {
+                    gameLoop();
+                }
+            };
+        });
     </script>
 </body>
 </html>
